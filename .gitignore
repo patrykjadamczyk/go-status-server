@@ -13,4 +13,4 @@
 
 # IntelliJ IDEA
 .idea
-go-status-server.iml
+*.iml
