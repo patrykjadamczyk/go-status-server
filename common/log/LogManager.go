@@ -3,6 +3,8 @@ package log
 import (
 	"fmt"
 	"github.com/patrykjadamczyk/go-status-server/config"
+	"log"
+	"os"
 )
 
 type Level int
@@ -19,9 +21,10 @@ const OutputStdout = Output(0b0)
 const OutputLogfile = Output(0b1)
 
 type Logger struct {
-	logLevel Level
-	output   Output
-	logFile  string
+	logLevel  Level
+	output    Output
+	logFile   string
+	logLogger *log.Logger
 }
 
 type ParametersArray []interface{}
@@ -55,6 +58,21 @@ func (l *Logger) prefix(level Level) string {
 	return fmt.Sprintf("GSS[%s]: ", levelString)
 }
 
+func (l *Logger) prepareLog() *log.Logger {
+	if l.logLogger != nil {
+		return l.logLogger
+	}
+	logFile, err := os.OpenFile(l.logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		fmt.Println("Logging Error:", err)
+		panic(err)
+	}
+	defer logFile.Close()
+	logger := log.New(logFile, string(nil), int(nil))
+	l.logLogger = logger
+	return logger
+}
+
 func (l *Logger) Log(level Level, params ...interface{}) {
 	if !l.canLog(level) {
 		return
@@ -62,7 +80,12 @@ func (l *Logger) Log(level Level, params ...interface{}) {
 	prefix := l.prefix(level)
 	parameters := ParametersArray{prefix}
 	parameters = append(parameters, params...)
-	fmt.Println(parameters...)
+	if l.output == OutputLogfile {
+		logLogger := l.prepareLog()
+		logLogger.Println(parameters...)
+	} else {
+		fmt.Println(parameters...)
+	}
 }
 
 func (l *Logger) Debug(params ...interface{}) {
