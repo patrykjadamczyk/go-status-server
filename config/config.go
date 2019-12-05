@@ -1,5 +1,12 @@
 package config
 
+import (
+	"fmt"
+	"os"
+	"strconv"
+	"strings"
+)
+
 type VerboseLevel uint8
 
 const (
@@ -126,6 +133,8 @@ type MonitorResource struct {
 	ParserRegex MonitorResourceRegexString
 }
 
+type MonitorServerShell string
+
 type MonitorInfo struct {
 	// Type of Server that you want to monitor
 	ServerType MonitorServerType
@@ -135,6 +144,8 @@ type MonitorInfo struct {
 	Resources []MonitorResource
 	// File name of log file for the server
 	LogFile string
+	// Server Command Shell
+	ServerCommandShell MonitorServerShell
 }
 
 type Configuration struct {
@@ -169,10 +180,11 @@ func FillConfigWithDefaults() Configuration {
 			VersionArray: [4]int{0, 1, 0, 0},
 		},
 		Monitor: MonitorInfo{
-			ServerType: MonitorLocalServer,
-			ServerUri:  "local",
-			Resources:  nil,
-			LogFile:    "monitor_error.log",
+			ServerType:         MonitorLocalServer,
+			ServerUri:          "local",
+			Resources:          nil,
+			LogFile:            "monitor_error.log",
+			ServerCommandShell: nil,
 		},
 		Logs: LogInfo{
 			Enabled: true,
@@ -192,15 +204,100 @@ func FillConfigWithEnvironmentVars() Configuration {
 	// Make Config from Default Values
 	newConfig := FillConfigWithDefaults()
 	// Get All Environment Variables
-	//gelsLogServerPort, gelsLogServerPortExist := os.LookupEnv("GELS_LOG_SERVER_PORT")
-	//gelsLogServerLogfile, gelsLogServerLogfileExist := os.LookupEnv("GELS_LOG_SERVER_LOGFILE")
+	// UI Server
+	gssUiServerPort, gssUiServerPortExist := os.LookupEnv("GSS_UI_SERVER_PORT")
+	gssUiServerLogfile, gssUiServerLogfileExist := os.LookupEnv("GSS_UI_SERVER_LOGFILE")
+	gssUiServerVerboselevel, gssUiServerVerboselevelExist := os.LookupEnv("GSS_UI_SERVER_VERBOSE")
+	// API Server
+	gssApiServerPort, gssApiServerPortExist := os.LookupEnv("GSS_API_SERVER_PORT")
+	gssApiServerLogfile, gssApiServerLogfileExist := os.LookupEnv("GSS_API_SERVER_LOGFILE")
+	gssApiServerVerboselevel, gssApiServerVerboselevelExist := os.LookupEnv("GSS_API_SERVER_VERBOSE")
+	// Monitor Server
+	gssMonitorServerType, gssMonitorServerTypeExist := os.LookupEnv("GSS_MONITOR_SERVER_TYPE")
+	gssMonitorServerUri, gssMonitorServerUriExist := os.LookupEnv("GSS_MONITOR_SERVER_URI")
+	gssMonitorServerLogfile, gssMonitorServerLogfileExist := os.LookupEnv("GSS_MONITOR_SERVER_LOGFILE")
+	// Log Server
+	gssLogServerEnabled, gssLogServerEnabledExist := os.LookupEnv("GSS_LOG_SERVER_ENABLED")
+	gssLogServerVerboselevel, gssLogServerVerboselevelExist := os.LookupEnv("GSS_LOG_SERVER_VERBOSE")
+	gssLogServerLogfile, gssLogServerLogfileExist := os.LookupEnv("GSS_LOG_SERVER_LOGFILE")
+	// Alert Server
+	gssAlertServerEnabled, gssAlertServerEnabledExist := os.LookupEnv("GSS_ALERT_SERVER_ENABLED")
+	gssAlertServerLogfile, gssAlertServerLogfileExist := os.LookupEnv("GSS_ALERT_SERVER_LOGFILE")
+	// UI Server Environment Variables Setup
+	if gssUiServerPortExist {
+		newConfig.UiServer.Port = strings.TrimSpace(gssUiServerPort)
+	}
+	if gssUiServerLogfileExist {
+		newConfig.UiServer.LogFile = strings.TrimSpace(gssUiServerLogfile)
+	}
+	if gssUiServerVerboselevelExist {
+		gssUiServerVerboselevel = strings.TrimSpace(gssUiServerVerboselevel)
+		gssUiServerVerboselevelUint, err := strconv.ParseUint(gssUiServerVerboselevel, 10, 8)
+		if err == nil {
+			newConfig.UiServer.LogVerbose = VerboseLevel(gssUiServerVerboselevelUint)
+		} else {
+			gssError := fmt.Errorf("configuration: %s | Error: %s", "GSS_UI_SERVER_VERBOSE", err)
+			fmt.Println(gssError.Error())
+		}
+	}
+	// API Server Environment Variables Setup
+	if gssApiServerPortExist {
+		newConfig.ApiServer.Port = strings.TrimSpace(gssApiServerPort)
+	}
+	if gssApiServerLogfileExist {
+		newConfig.ApiServer.LogFile = strings.TrimSpace(gssApiServerLogfile)
+	}
+	if gssApiServerVerboselevelExist {
+		gssApiServerVerboselevel = strings.TrimSpace(gssApiServerVerboselevel)
+		gssApiServerVerboselevelUint, err := strconv.ParseUint(gssApiServerVerboselevel, 10, 8)
+		if err == nil {
+			newConfig.ApiServer.LogVerbose = VerboseLevel(gssApiServerVerboselevelUint)
+		} else {
+			gssError := fmt.Errorf("configuration: %s | Error: %s", "GSS_API_SERVER_VERBOSE", err)
+			fmt.Println(gssError.Error())
+		}
+	}
+	// Monitor Server Environment Variables Setup
+	if gssMonitorServerTypeExist {
+		newConfig.Monitor.ServerType = MonitorServerType(strings.TrimSpace(gssMonitorServerType))
+	}
+	if gssMonitorServerUriExist {
+		newConfig.Monitor.ServerUri = MonitorServerUri(strings.TrimSpace(gssMonitorServerUri))
+	}
+	if gssMonitorServerLogfileExist {
+		newConfig.Monitor.LogFile = strings.TrimSpace(gssMonitorServerLogfile)
+	}
 	// Log Server Environment Variables Setup
-	//if gelsLogServerPortExist {
-	//	newConfig.LogServer.Port = strings.TrimSpace(gelsLogServerPort)
-	//}
-	//if gelsLogServerLogfileExist {
-	//	newConfig.LogServer.LogFile = strings.TrimSpace(gelsLogServerLogfile)
-	//}
+	if gssLogServerEnabledExist {
+		gssLogServerEnabledBool, err := strconv.ParseBool(strings.TrimSpace(gssLogServerEnabled))
+		if err == nil {
+			newConfig.Logs.Enabled = gssLogServerEnabledBool
+		} else {
+			gssError := fmt.Errorf("configuration: %s | Error: %s", "GSS_LOG_SERVER_ENABLED", err)
+			fmt.Println(gssError.Error())
+		}
+	}
+	if gssLogServerLogfileExist {
+		newConfig.Logs.LogFile = strings.TrimSpace(gssLogServerLogfile)
+	}
+	if gssLogServerVerboselevelExist {
+		gssLogServerVerboselevel = strings.TrimSpace(gssLogServerVerboselevel)
+		gssLogServerVerboselevelUint, _ := strconv.ParseUint(gssLogServerVerboselevel, 10, 8)
+		newConfig.Logs.Verbose = VerboseLevel(gssLogServerVerboselevelUint)
+	}
+	// Alert Server Environment Variables Setup
+	if gssAlertServerEnabledExist {
+		gssAlertServerEnabledBool, err := strconv.ParseBool(strings.TrimSpace(gssAlertServerEnabled))
+		if err == nil {
+			newConfig.Alerts.Enabled = gssAlertServerEnabledBool
+		} else {
+			gssError := fmt.Errorf("configuration: %s | Error: %s", "GSS_ALERT_SERVER_ENABLED", err)
+			fmt.Println(gssError.Error())
+		}
+	}
+	if gssAlertServerLogfileExist {
+		newConfig.Alerts.LogFile = strings.TrimSpace(gssAlertServerLogfile)
+	}
 	// Return Changed Config
 	return newConfig
 }
